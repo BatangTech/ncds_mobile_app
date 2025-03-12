@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+firebase-admin
+google-generativeai
+langchain-community
+langchain-huggingface
+chromadb
+pydantic
+decouple
