@@ -53,14 +53,12 @@ class _ChatScreenState extends State<ChatScreen> {
     if (userId.isEmpty) return;
 
     try {
-      
-      String collectionName = "low_risk_users"; 
+      String collectionName = "low_risk_users";
 
       if (riskLevel == "red" ||
           riskLevel.contains("สูง") ||
           riskLevel.contains("เสี่ยงสูง")) {
-        collectionName =
-            "high_risk_users"; 
+        collectionName = "high_risk_users";
       }
 
       await FirebaseFirestore.instance
@@ -148,12 +146,10 @@ class _ChatScreenState extends State<ChatScreen> {
               });
             });
 
-            
             if (isHighRisk || isLowRisk) {
               updateRiskStatus(widget.userId, riskLevel);
             }
 
-           
             showDialog(
               context: context,
               barrierDismissible: false,

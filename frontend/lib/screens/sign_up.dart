@@ -42,10 +42,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         isLoading = true;
       });
 
-      
       String userId = FirebaseAuth.instance.currentUser!.uid;
 
-      
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (context) => ChatScreen(userId: userId),
       ));
@@ -68,7 +66,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      print("AI: ${data['response']}"); 
+      print("AI: ${data['response']}");
     } else {
       print("❌ Error: ${response.body}");
     }

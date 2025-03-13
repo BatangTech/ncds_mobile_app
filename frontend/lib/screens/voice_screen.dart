@@ -31,7 +31,6 @@ class _VoiceScreenState extends State<VoiceScreen> {
     _initTTS();
     _checkAvailableLanguages();
 
-
     fetchInitialMessage();
   }
 
@@ -41,8 +40,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
           "http://10.0.2.2:8080/start_chat?user_id=${widget.userId}"));
 
       if (response.statusCode == 200) {
-        var responseData =
-            jsonDecode(utf8.decode(response.bodyBytes));
+        var responseData = jsonDecode(utf8.decode(response.bodyBytes));
         String botReply = responseData["response"];
 
         if (mounted) {
@@ -130,8 +128,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
       );
 
       if (response.statusCode == 200) {
-        var responseData =
-            jsonDecode(utf8.decode(response.bodyBytes)); 
+        var responseData = jsonDecode(utf8.decode(response.bodyBytes));
         String botReply = responseData["response"];
         String riskLevel = responseData["risk_level"] ?? "ไม่ระบุ";
 

@@ -6,13 +6,13 @@ class TextFiledInput extends StatelessWidget {
   final String hintText;
   final IconData icon;
 
-  const TextFiledInput(
-      {super.key,
-      required this.textEditingController,
-      this.isPass = false,
-      required this.hintText,
-      required this.icon,
-      });
+  const TextFiledInput({
+    super.key,
+    required this.textEditingController,
+    this.isPass = false,
+    required this.hintText,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {

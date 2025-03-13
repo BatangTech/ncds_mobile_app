@@ -40,10 +40,8 @@ class _LoginScreenState extends State<LoginScreen> {
         isLoading = true;
       });
 
-      
       String userId = FirebaseAuth.instance.currentUser!.uid;
 
-      
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (context) => ChatScreen(userId: userId),
       ));
@@ -86,8 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 height: height / 2.7,
-                child: Image.asset("assets/images/login.png",
-                    height: 289.3), 
+                child: Image.asset("assets/images/login.png", height: 289.3),
               ),
               TextFiledInput(
                   textEditingController: emailController,
