@@ -17,7 +17,6 @@ if not firebase_admin._apps:
 
 db = firestore.client()  
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
