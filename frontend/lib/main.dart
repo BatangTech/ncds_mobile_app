@@ -40,17 +40,17 @@ class MyApp extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-                child: CircularProgressIndicator()); // แสดง loading
+                child: CircularProgressIndicator()); 
           }
 
           if (snapshot.hasData) {
-            // ดึง userId จาก FirebaseAuth
+            
             String userId = snapshot.data!.uid;
 
-            // ส่ง userId ไปยัง ChatScreen
-            return ChatScreen(userId: userId); // ส่ง userId ไปยัง ChatScreen
+            
+            return ChatScreen(userId: userId); 
           } else {
-            return const LoginScreen(); // ถ้าไม่มีข้อมูล (ผู้ใช้ยังไม่ล็อกอิน)
+            return const LoginScreen(); 
           }
         },
       ),

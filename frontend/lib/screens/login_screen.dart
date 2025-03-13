@@ -40,10 +40,10 @@ class _LoginScreenState extends State<LoginScreen> {
         isLoading = true;
       });
 
-      // ดึง userId จาก FirebaseAuth หลังจากที่ล็อกอินสำเร็จ
+      
       String userId = FirebaseAuth.instance.currentUser!.uid;
 
-      // ถ้า userId ได้แล้ว ส่งไปยัง ChatScreen
+      
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (context) => ChatScreen(userId: userId),
       ));
@@ -85,9 +85,9 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               SizedBox(
                 width: double.infinity,
-                height: height / 2.7, // ✅ ใช้ตัวแปรที่เปลี่ยนแปลงได้
+                height: height / 2.7,
                 child: Image.asset("assets/images/login.png",
-                    height: 289.3), // ✅ ตรวจสอบ path รูปภาพ
+                    height: 289.3), 
               ),
               TextFiledInput(
                   textEditingController: emailController,
