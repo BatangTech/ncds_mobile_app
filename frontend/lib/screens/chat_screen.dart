@@ -37,8 +37,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
-        final responseData =
-            jsonDecode(utf8.decode(response.bodyBytes)); 
+        final responseData = jsonDecode(utf8.decode(response.bodyBytes));
         setState(() {
           messages.add({'query': '', 'response': responseData["response"]});
         });
@@ -51,138 +50,161 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> updateRiskStatus(String userId, String riskLevel) async {
-  if (userId.isEmpty) return;
+    if (userId.isEmpty) return;
 
-  try {
-    await FirebaseFirestore.instance.collection('high_risk_users').doc(userId).set({
-      'user_id': userId,
-      'risk_level': riskLevel,
-      'timestamp': FieldValue.serverTimestamp(),
+    try {
+      
+      String collectionName = "low_risk_users"; 
+
+      if (riskLevel == "red" ||
+          riskLevel.contains("สูง") ||
+          riskLevel.contains("เสี่ยงสูง")) {
+        collectionName =
+            "high_risk_users"; 
+      }
+
+      await FirebaseFirestore.instance
+          .collection(collectionName)
+          .doc(userId)
+          .set({
+        'user_id': userId,
+        'risk_level': riskLevel,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      print("✅ อัปเดตข้อมูลผู้ใช้ที่มีความเสี่ยง $riskLevel สำเร็จ");
+    } catch (e) {
+      print("❌ ไม่สามารถอัปเดตข้อมูลความเสี่ยงได้: $e");
+    }
+  }
+
+  Future<void> sendMessage(String message) async {
+    if (message.trim().isEmpty || widget.userId.isEmpty) {
+      showSnackBar(context, "User ID หรือข้อความไม่ถูกต้อง");
+      return;
+    }
+
+    setState(() {
+      messages.add({'query': message, 'response': ''});
+      _isLoading = true;
     });
-    print("✅ อัปเดตข้อมูลผู้ใช้ที่มีความเสี่ยงสูงสำเร็จ");
-  } catch (e) {
-    print("❌ ไม่สามารถอัปเดตข้อมูลความเสี่ยงได้: $e");
-  }
-}
 
-Future<void> sendMessage(String message) async { 
-  if (message.trim().isEmpty || widget.userId.isEmpty) {
-    showSnackBar(context, "User ID หรือข้อความไม่ถูกต้อง");
-    return;
-  }
+    _controller.clear();
 
-  setState(() {
-    messages.add({'query': message, 'response': ''});
-    _isLoading = true;
-  });
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:8080/chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': widget.userId,
+          'message': message,
+        }),
+      );
 
-  _controller.clear();
+      final responseData = json.decode(utf8.decode(response.bodyBytes));
 
-  try {
-    final response = await http.post(
-      Uri.parse('http://10.0.2.2:8080/chat'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'user_id': widget.userId,
-        'message': message,
-      }),
-    );
+      if (response.statusCode == 200) {
+        String aiResponse =
+            responseData['response'] ?? "AI ไม่สามารถให้คำตอบได้";
 
-    final responseData = json.decode(utf8.decode(response.bodyBytes));
-
-    if (response.statusCode == 200) {
-      String aiResponse = responseData['response'] ?? "AI ไม่สามารถให้คำตอบได้";
-
-      if (mounted) {
-        setState(() {
-          messages.add({'query': '', 'response': aiResponse});
-          _isLoading = false;
-        });
-
-        if (responseData.containsKey('next_question') &&
-            responseData['next_question'].isNotEmpty) {
-          Future.delayed(const Duration(seconds: 1), () {
-            if (mounted) {
-              setState(() {
-                messages.add(
-                    {'query': '', 'response': responseData['next_question']});
-              });
-            }
-          });
-        }
-
-        if (responseData.containsKey('risk_level')) {
-          String riskLevel = responseData['risk_level'].toLowerCase(); 
-          bool isHighRisk = riskLevel == "red" ||
-              riskLevel.contains("สูง") ||
-              riskLevel.contains("เสี่ยงสูง");
-          Color riskColor = isHighRisk ? Colors.red : Colors.green;
-          IconData riskIcon =
-              isHighRisk ? Icons.warning_amber_rounded : Icons.check_circle;
-
+        if (mounted) {
           setState(() {
-            messages.add({
-              'query': '',
-              'response': "📢 ผลการวิเคราะห์สุขภาพของคุณ: $riskLevel",
-              'color': riskColor.value.toString()
-            });
+            messages.add({'query': '', 'response': aiResponse});
+            _isLoading = false;
           });
 
-          if (isHighRisk) {
-            updateRiskStatus(widget.userId, riskLevel); 
+          if (responseData.containsKey('next_question') &&
+              responseData['next_question'].isNotEmpty) {
+            Future.delayed(const Duration(seconds: 1), () {
+              if (mounted) {
+                setState(() {
+                  messages.add(
+                      {'query': '', 'response': responseData['next_question']});
+                });
+              }
+            });
           }
 
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(riskIcon, size: 80, color: riskColor),
-                    const SizedBox(height: 10),
-                    Text(
-                      "ระดับความเสี่ยงของคุณ",
-                      style: GoogleFonts.poppins(
-                          fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      riskLevel,
-                      style:
-                          GoogleFonts.poppins(fontSize: 16, color: riskColor),
+          if (responseData.containsKey('risk_level')) {
+            String riskLevel = responseData['risk_level'].toLowerCase();
+            bool isHighRisk = riskLevel == "red" ||
+                riskLevel.contains("สูง") ||
+                riskLevel.contains("เสี่ยงสูง");
+            bool isLowRisk = riskLevel == "green" ||
+                riskLevel.contains("ต่ำ") ||
+                riskLevel.contains("เสี่ยงต่ำ");
+
+            Color riskColor = isHighRisk
+                ? Colors.red
+                : (isLowRisk ? Colors.green : Colors.orange);
+            IconData riskIcon = isHighRisk
+                ? Icons.warning_amber_rounded
+                : (isLowRisk ? Icons.check_circle : Icons.info_outline);
+
+            setState(() {
+              messages.add({
+                'query': '',
+                'response': "📢 ผลการวิเคราะห์สุขภาพของคุณ: $riskLevel",
+                'color': riskColor.value.toString()
+              });
+            });
+
+            
+            if (isHighRisk || isLowRisk) {
+              updateRiskStatus(widget.userId, riskLevel);
+            }
+
+           
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(riskIcon, size: 80, color: riskColor),
+                      const SizedBox(height: 10),
+                      Text(
+                        "ระดับความเสี่ยงของคุณ",
+                        style: GoogleFonts.poppins(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        riskLevel,
+                        style:
+                            GoogleFonts.poppins(fontSize: 16, color: riskColor),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text("ตกลง",
+                          style: GoogleFonts.poppins(fontSize: 16)),
                     ),
                   ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("ตกลง",
-                        style: GoogleFonts.poppins(fontSize: 16)),
-                  ),
-                ],
-              );
-            },
-          );
+                );
+              },
+            );
+          }
         }
+      } else {
+        String errorMessage = responseData.containsKey('error')
+            ? responseData['error']
+            : "เกิดข้อผิดพลาด กรุณาลองใหม่";
+        showSnackBar(context, errorMessage);
+        setState(() => _isLoading = false);
       }
-    } else {
-      String errorMessage = responseData.containsKey('error')
-          ? responseData['error']
-          : "เกิดข้อผิดพลาด กรุณาลองใหม่";
-      showSnackBar(context, errorMessage);
+    } catch (e) {
+      showSnackBar(context, "❌ เกิดข้อผิดพลาดในการเชื่อมต่อ");
       setState(() => _isLoading = false);
+      print("❌ Error: $e");
     }
-  } catch (e) {
-    showSnackBar(context, "❌ เกิดข้อผิดพลาดในการเชื่อมต่อ");
-    setState(() => _isLoading = false);
-    print("❌ Error: $e");
   }
-}
 
   Future<void> _getUserProfile() async {
     var userDoc = await FirebaseFirestore.instance

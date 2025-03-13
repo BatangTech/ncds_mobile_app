@@ -210,9 +210,9 @@ def get_conversation_history(user_id, limit=5):
         doc = doc_ref.get()
         if doc.exists:
             history = doc.to_dict().get("conversation", [])
-            last_n_conversations = history[-limit:]  # ดึงเฉพาะ 5 อันสุดท้าย
+            last_n_conversations = history[-limit:]  
 
-            # ตรวจสอบโครงสร้างข้อมูล
+           
             formatted_history = []
             for entry in last_n_conversations:
                 query = entry.get("query", "ไม่ทราบคำถาม")
