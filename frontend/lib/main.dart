@@ -10,7 +10,7 @@ void main() async {
   await Firebase.initializeApp();
 
   // Log out the user on app startup to force login screen
-  await FirebaseAuth.instance.signOut();  // เพิ่มการล็อกเอาต์
+  await FirebaseAuth.instance.signOut();  
 
   await checkPermissions(); 
 
