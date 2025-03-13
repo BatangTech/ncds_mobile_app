@@ -20,7 +20,6 @@ db = firestore.client()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 app = FastAPI()
 
 app.add_middleware(
