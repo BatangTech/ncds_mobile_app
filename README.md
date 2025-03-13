@@ -29,7 +29,6 @@ pip install python-decouple
 
 <pre><code>
 GEMINI_API_KEY=your_google_gemini_api_key
-FIREBASE_ADMIN_SDK_PATH=your_firebase_adminsdk.json
 </code></pre>
 
 <ol start="4">
