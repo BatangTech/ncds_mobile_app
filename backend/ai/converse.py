@@ -92,27 +92,27 @@ def converse(user_id, query):
         return {"response": "ฉันไม่ได้ยินคุณเลยค่ะ ช่วยพูดอีกครั้งได้ไหมคะ?"}
 
     try:
-        # Fetch the relevant context from the database
+        
         context = get_relevant_context_from_db(query)
         
-        # Fetch the conversation history
+      
         conversation_history = get_conversation_history(user_id)
         
-        # Generate the RAG prompt for the AI
+        
         prompt = generate_rag_prompt(query, context, conversation_history)
         
-        # Get AI's response
+       
         response = genai_model.generate_content(prompt)
         response_text = response.text.strip() if response and response.text.strip() else None
         ai_response = response_text or "ขอโทษค่ะ ฉันไม่สามารถประมวลผลคำขอของคุณได้ในขณะนี้"
 
-        # Generate follow-up question
+        
         followup_question = generate_followup_question(conversation_history)
         
         if followup_question:
             ai_response += f"\nคำถามถัดไป: {followup_question}"
 
-        # Risk classification after 5 questions
+
         risk_level = analyze_risk(user_id) if len(conversation_history.split("\n")) >= 5 else None
 
     except Exception as e:
@@ -120,7 +120,6 @@ def converse(user_id, query):
         ai_response = "ขอโทษค่ะ ฉันไม่สามารถประมวลผลคำขอของคุณได้ในขณะนี้"
         risk_level = None
 
-    # Save conversation data to Firestore
     save_conversation_to_firestore(user_id, {"query": query, "response": ai_response}, risk_level=risk_level)
 
     return {
@@ -135,7 +134,6 @@ def save_conversation_to_firestore(user_id, conversation_data,risk_level=None):
         doc_ref = db.collection("conversations").document(user_id)
         doc = doc_ref.get()
 
-        # If the document doesn't exist, create a new one with default data
         if not doc.exists:
             doc_ref.set({
                 "conversation": [],
@@ -144,7 +142,6 @@ def save_conversation_to_firestore(user_id, conversation_data,risk_level=None):
                 "risk_level": "ไม่ระบุ"
             })
 
-        # Update the conversation history and next question in Firestore
         doc_ref.update({
             "conversation": firestore.ArrayUnion([conversation_data]),
             "timestamp": firestore.SERVER_TIMESTAMP,
@@ -165,7 +162,7 @@ def analyze_risk(user_id):
 
     conversation = doc.to_dict().get("conversation", [])
     
-    # Check the number of questions asked
+   
     if len(conversation) < 5:
         analysis_prompt = f"""
         Analyze the user's health from the conversation history and classify them as:
@@ -270,7 +267,6 @@ def new_chat(user_id: str):
     try:
         chat_ref = db.collection("conversations").document(user_id)
 
-        # รีเซ็ตเอกสารแชทใหม่
         chat_ref.set({
             "conversation": [],
             "risk_level": "ไม่ระบุ",
