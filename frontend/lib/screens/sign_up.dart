@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:frontend/Widget/snack_bar.dart';
+import 'package:frontend/widget/snack_bar.dart';
 import 'package:frontend/screens/chat_screen.dart';
-import 'package:frontend/screens/login_screen.dart';
 import 'package:frontend/services/auth_service.dart';
 
-import '../Widget/button.dart';
-import '../Widget/text_filed.dart';
+import '../components/signup/form_section.dart';
+import '../components/signup/header_section.dart';
+import '../components/signup/login_redirect.dart';
+
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -22,15 +23,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   bool isLoading = false;
-
-  void despose() {
-    super.dispose();
+  
+  @override
+  void dispose() {
     emailController.dispose();
     passwordController.dispose();
     nameController.dispose();
+    super.dispose();
   }
 
   void signUpUser() async {
+    setState(() {
+      isLoading = true;
+    });
+    
     String res = await AuthService().signUpUser(
       email: emailController.text,
       password: passwordController.text,
@@ -38,12 +44,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
 
     if (res == "success") {
-      setState(() {
-        isLoading = true;
-      });
-
       String userId = FirebaseAuth.instance.currentUser!.uid;
-
+      await startChat();
+      
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (context) => ChatScreen(userId: userId),
       ));
@@ -74,60 +77,30 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double height = MediaQuery.of(context).size.height;
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: SizedBox(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: double.infinity,
-                height: height / 2.7,
-                child: Image.asset("assets/images/signup.png", height: 289.3),
-              ),
-              TextFiledInput(
-                  textEditingController: nameController,
-                  hintText: "Enter your name",
-                  icon: Icons.person),
-              TextFiledInput(
-                  textEditingController: emailController,
-                  hintText: "Enter your email",
-                  icon: Icons.email),
-              TextFiledInput(
-                  textEditingController: passwordController,
-                  hintText: "Enter your password",
-                  isPass: true,
-                  icon: Icons.lock),
-              MyButton(onTab: signUpUser, text: "Sign Up"),
-              SizedBox(height: height / 15),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Already have an account? ",
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const LoginScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      "Login",
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-                ],
-              )
-            ],
+      backgroundColor: const Color(0xFFF8F9FF),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                HeaderSection(context: context),
+                const SizedBox(height: 24),
+                FormSection(
+                  nameController: nameController,
+                  emailController: emailController,
+                  passwordController: passwordController,
+                  isLoading: isLoading,
+                  onSignUp: signUpUser,
+                ),
+                const SizedBox(height: 16),
+                LoginRedirect(context: context),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),
