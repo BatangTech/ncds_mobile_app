@@ -35,7 +35,7 @@ class TextFiledInput extends StatelessWidget {
               const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
           border: InputBorder.none,
           filled: true,
-          fillColor: Color(0xFFedf0f8),
+          fillColor: const Color(0xFFedf0f8),
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide.none,
             borderRadius: BorderRadius.circular(30),
