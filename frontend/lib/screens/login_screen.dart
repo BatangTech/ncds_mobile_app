@@ -10,7 +10,8 @@ import '../components/login/auth_heading.dart';
 import '../components/login/custom_button.dart';
 import '../components/login/custom_text_field.dart';
 import '../components/login/sign_up_option.dart';
-import '../widget/snack_bar.dart';
+import '../widgets/snack_bar.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

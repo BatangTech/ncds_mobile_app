@@ -2,13 +2,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:frontend/widget/snack_bar.dart';
 import 'package:frontend/screens/chat_screen.dart';
 import 'package:frontend/services/auth_service.dart';
-
 import '../components/signup/form_section.dart';
 import '../components/signup/header_section.dart';
 import '../components/signup/login_redirect.dart';
+import '../widgets/snack_bar.dart';
 
 
 class SignUpScreen extends StatefulWidget {
