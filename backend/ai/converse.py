@@ -9,7 +9,6 @@ import traceback
 
 api_key = config("GOOGLE_GEMINI_API_KEY")
 
-
 if not firebase_admin._apps:
     try:
         cred = credentials.Certificate("firebase-adminsdk.json")  
