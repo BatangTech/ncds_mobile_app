@@ -292,7 +292,7 @@ def new_chat(user_id: str):
 def get_specific_message(user_id, message_id):
     """🔹 ดึงข้อความสนทนาตาม message_id ที่ระบุ"""
     try:
-        # ดึงข้อมูลจาก Firestore
+        
         doc_ref = db.collection("conversations").document(user_id)
         doc = doc_ref.get()
         
@@ -301,16 +301,14 @@ def get_specific_message(user_id, message_id):
         
         conversation = doc.to_dict().get("conversation", [])
         
-        # ตรวจสอบ message_id ที่เป็นตัวเลข (index) หรือ id จริง
+       
         try:
             message_index = int(message_id)
-            # ถ้า message_id เป็นตัวเลข ใช้เป็น index
             if 0 <= message_index < len(conversation):
                 return {"message": conversation[message_index].get("response", "")}
             else:
                 return {"error": "ไม่พบข้อความที่ระบุ"}
         except ValueError:
-            # ถ้า message_id ไม่ใช่ตัวเลข ถือว่าเป็น id จริง
             for message in conversation:
                 if message.get("id") == message_id:
                     return {"message": message.get("response", "")}
