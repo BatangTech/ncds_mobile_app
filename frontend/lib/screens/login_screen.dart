@@ -34,28 +34,32 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void loginUser() async {
+  if (!mounted) return; 
+  
+  setState(() {
+    isLoading = true;
+  });
+
+  String res = await AuthService().loginUser(
+    email: emailController.text,
+    password: passwordController.text,
+  );
+
+  if (!mounted) return; 
+
+  if (res == "success") {
+    String userId = FirebaseAuth.instance.currentUser!.uid;
+
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+      builder: (context) => ChatScreen(userId: userId),
+    ));
+  } else {
     setState(() {
-      isLoading = true;
+      isLoading = false;
     });
-
-    String res = await AuthService().loginUser(
-      email: emailController.text,
-      password: passwordController.text,
-    );
-
-    if (res == "success") {
-      String userId = FirebaseAuth.instance.currentUser!.uid;
-
-      Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (context) => ChatScreen(userId: userId),
-      ));
-    } else {
-      setState(() {
-        isLoading = false;
-      });
-      showSnackBar(context, res);
-    }
+    showSnackBar(context, res);
   }
+}
 
   Future<void> startChat() async {
     final user = FirebaseAuth.instance.currentUser;

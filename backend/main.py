@@ -10,6 +10,8 @@ from ai.converse import start_chat
 from ai.converse import new_chat 
 import firebase_admin
 from firebase_admin import credentials, firestore
+from ai.converse import get_specific_message
+
 
 if not firebase_admin._apps:
     cred = credentials.Certificate("firebase-adminsdk.json")  
@@ -118,6 +120,53 @@ def health_check():
     """✅ Health Check Endpoint"""
     return {"status": "ok", "message": "Service is running"}
 
+
+@app.get("/get_message")
+def get_message_route(user_id: str, message_id: str):
+    """🔹 ดึงข้อความเฉพาะจากประวัติการสนทนา"""
+    if not user_id or not message_id:
+        return JSONResponse(content={"error": "ต้องระบุ user_id และ message_id"}, status_code=400)
+    
+    try:
+        result = get_specific_message(user_id, message_id)
+        return JSONResponse(content=result, media_type="application/json; charset=utf-8")
+    except Exception as e:
+        error_details = traceback.format_exc()
+        logger.error(f"❌ Error fetching specific message: {e}\n{error_details}")
+        return JSONResponse(content={"error": f"ข้อผิดพลาดในการค้นหาข้อความ: {str(e)}"}, status_code=500)
+
+@app.post("/send_notification")
+async def send_notification(request: Request):
+    data = await request.json()
+    user_id = data.get("user_id")
+    title = data.get("title")
+    body = data.get("body")
+    additional_data = data.get("data", {})
+    
+    # ตรวจสอบข้อมูลที่จำเป็น
+    if not all([user_id, title, body]):
+        return JSONResponse(content={"error": "Missing required fields"}, status_code=400)
+    
+    # ดึง FCM token จาก Firestore
+    try:
+        user_doc = db.collection("users").document(user_id).get()
+        if not user_doc.exists:
+            return JSONResponse(content={"error": "User not found"}, status_code=404)
+        
+        fcm_token = user_doc.to_dict().get("fcmToken")
+        if not fcm_token:
+            return JSONResponse(content={"error": "FCM token not found for user"}, status_code=404)
+        
+        # ส่งการแจ้งเตือนด้วย FCM
+        result = send_fcm_notification(fcm_token, title, body, additional_data)
+        return JSONResponse(content={"success": result}, status_code=200)
+    except Exception as e:
+        logger.error(f"Error sending notification: {e}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8080)
+
+
+

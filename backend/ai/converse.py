@@ -4,6 +4,7 @@ from firebase_admin import credentials, firestore
 from langchain_chroma import Chroma
 from decouple import config
 from langchain_huggingface import HuggingFaceEmbeddings
+import time
 import traceback 
 
 
@@ -127,11 +128,17 @@ def converse(user_id, query):
     }
 
 
-def save_conversation_to_firestore(user_id, conversation_data,risk_level=None):
-    """🔹 Save conversation data (query, response) to Firestore"""
+def save_conversation_to_firestore(user_id, conversation_data, risk_level=None):
+    """🔹 Save conversation data (query, response) to Firestore with message ID"""
     try:
         doc_ref = db.collection("conversations").document(user_id)
         doc = doc_ref.get()
+
+        # สร้าง message ID โดยใช้ timestamp
+        message_id = f"{user_id}_{int(time.time() * 1000)}"
+        
+        # เพิ่ม message ID ลงใน conversation_data
+        conversation_data["id"] = message_id
 
         if not doc.exists:
             doc_ref.set({
@@ -146,9 +153,12 @@ def save_conversation_to_firestore(user_id, conversation_data,risk_level=None):
             "timestamp": firestore.SERVER_TIMESTAMP,
             "risk_level": risk_level if risk_level else "ไม่ระบุ"
         })
+        
+        return message_id
 
     except Exception as e:
         print(f"❌ Error saving conversation: {e}")
+        return None
 
 
 def analyze_risk(user_id):
@@ -277,3 +287,55 @@ def new_chat(user_id: str):
     except Exception as e:
         print(f"❌ Error in new_chat: {e}")
         return {"response": "ขอโทษค่ะ มีข้อผิดพลาดในการเริ่มแชทใหม่"}
+
+
+def get_specific_message(user_id, message_id):
+    """🔹 ดึงข้อความสนทนาตาม message_id ที่ระบุ"""
+    try:
+        # ดึงข้อมูลจาก Firestore
+        doc_ref = db.collection("conversations").document(user_id)
+        doc = doc_ref.get()
+        
+        if not doc.exists:
+            return {"error": "ไม่พบข้อมูลผู้ใช้"}
+        
+        conversation = doc.to_dict().get("conversation", [])
+        
+        # ตรวจสอบ message_id ที่เป็นตัวเลข (index) หรือ id จริง
+        try:
+            message_index = int(message_id)
+            # ถ้า message_id เป็นตัวเลข ใช้เป็น index
+            if 0 <= message_index < len(conversation):
+                return {"message": conversation[message_index].get("response", "")}
+            else:
+                return {"error": "ไม่พบข้อความที่ระบุ"}
+        except ValueError:
+            # ถ้า message_id ไม่ใช่ตัวเลข ถือว่าเป็น id จริง
+            for message in conversation:
+                if message.get("id") == message_id:
+                    return {"message": message.get("response", "")}
+            return {"error": "ไม่พบข้อความที่ระบุ"}
+            
+    except Exception as e:
+        print(f"❌ Error fetching specific message: {e}")
+        traceback.print_exc()
+        return {"error": f"ข้อผิดพลาดในการค้นหาข้อความ: {str(e)}"}
+
+def send_fcm_notification(token, title, body, data=None):
+    """ส่งการแจ้งเตือนผ่าน FCM API v1 โดย Firebase Admin SDK"""
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=title,
+                body=body
+            ),
+            data=data or {},
+            token=token
+        )
+        
+        response = messaging.send(message)
+        print(f"Successfully sent message: {response}")
+        return True
+    except Exception as e:
+        print(f"Error sending message: {e}")
+        return False

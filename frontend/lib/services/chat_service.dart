@@ -1,4 +1,3 @@
-// utils/chat_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -73,6 +72,26 @@ class ChatService {
       print("✅ อัปเดตข้อมูลผู้ใช้ที่มีความเสี่ยง $riskLevel สำเร็จ");
     } catch (e) {
       print("❌ ไม่สามารถอัปเดตข้อมูลความเสี่ยงได้: $e");
+    }
+  }
+
+  Future<String?> fetchSpecificMessage(String messageId) async {
+    try {
+      final String apiUrl =
+          "http://10.0.2.2:8080/get_message?user_id=$userId&message_id=$messageId";
+
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['message'];
+      } else {
+        print("❌ Error fetching specific message: ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      print("❌ Error fetching specific message: $e");
+      return null;
     }
   }
 }
