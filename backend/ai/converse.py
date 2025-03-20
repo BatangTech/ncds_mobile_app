@@ -208,7 +208,6 @@ def get_relevant_context_from_db(query):
         print(f"❌ Error retrieving context: {e}")
         return ""
 
-
 def get_conversation_history(user_id, limit=5):
     """🔹 ดึงประวัติการสนทนาเฉพาะ 5 รายการล่าสุด"""
     try:
@@ -231,7 +230,6 @@ def get_conversation_history(user_id, limit=5):
     except Exception as e:
         print(f"❌ Error retrieving conversation history: {e}")
         return ""
-
 
 def start_chat(user_id: str, user_name: str = "คุณ"):
     """🔹 ให้ AI ทักทายด้วยชื่อที่รับมาจาก Firestore"""
@@ -259,7 +257,6 @@ def start_chat(user_id: str, user_name: str = "คุณ"):
         print(f"❌ Error in start_chat: {e}")
         return {"response": "ขอโทษค่ะ มีข้อผิดพลาดในการเริ่มการสนทนา"}
 
-
 def get_user_name(user_id):
     """🔹 ดึงชื่อผู้ใช้จาก Firestore"""
     try:
@@ -269,7 +266,6 @@ def get_user_name(user_id):
     except Exception as e:
         print(f"❌ Error fetching user name: {e}")
     return "คุณ"
-
 
 def new_chat(user_id: str):
     """🔹 เริ่มแชทใหม่โดยการลบประวัติการสนทนาเดิม"""
@@ -300,8 +296,7 @@ def get_specific_message(user_id, message_id):
             return {"error": "ไม่พบข้อมูลผู้ใช้"}
         
         conversation = doc.to_dict().get("conversation", [])
-        
-       
+            
         try:
             message_index = int(message_id)
             if 0 <= message_index < len(conversation):
@@ -329,8 +324,7 @@ def send_fcm_notification(token, title, body, data=None):
             ),
             data=data or {},
             token=token
-        )
-        
+        ) 
         response = messaging.send(message)
         print(f"Successfully sent message: {response}")
         return True
