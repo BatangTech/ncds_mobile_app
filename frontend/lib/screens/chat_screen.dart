@@ -5,16 +5,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
 import '../components/chat/chat_app_bar.dart';
 import '../components/chat/chat_drawer.dart';
 import '../components/chat/chat_input_box.dart';
 import '../components/chat/chat_message_list.dart';
-import '../components/chat/risk_alert_dialog.dart';
 import '../components/chat/typing_indicator.dart';
+import '../components/manager/interview_manager.dart';
+import '../components/manager/message_handler.dart';
 import '../services/chat_service.dart';
 import '../services/fcm_service.dart';
+import '../services/notification_service.dart';
 import '../utils/app_colors.dart';
+import 'user_profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String userId;
@@ -38,6 +40,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
   bool _isAppInForeground = true;
+  late final InterviewManager _interviewManager;
+  late final NotificationService _notificationService;
+  late final MessageHandler _messageHandler;
 
   @override
   void initState() {
@@ -46,9 +51,46 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _colors = AppColors();
     _chatService = ChatService(userId: widget.userId);
     _fcmService = FCMService();
+    _interviewManager = InterviewManager(
+      userId: widget.userId,
+      colors: _colors,
+      flutterLocalNotificationsPlugin: _flutterLocalNotificationsPlugin,
+      showSnackBar: showSnackBar,
+      resetChat: resetChat,
+    );
+
+    _notificationService = NotificationService(
+      userId: widget.userId,
+      flutterLocalNotificationsPlugin: _flutterLocalNotificationsPlugin,
+      showSnackBar: showSnackBar,
+      showInterviewDetails: (DateTime time) =>
+          _interviewManager.showInterviewDetails(context, time),
+      checkScheduledInterviews: _interviewManager.checkScheduledInterviews,
+      chatService: _chatService,
+    );
+
+    _messageHandler = MessageHandler(
+      userId: widget.userId,
+      chatService: _chatService,
+      fcmService: _fcmService,
+      showSnackBar: showSnackBar,
+      scrollToBottom: _scrollToBottom,
+      addMessage: (Map<String, String> message) {
+        setState(() {
+          messages.add(message);
+        });
+      },
+      updateRiskStatus: _chatService.updateRiskStatus,
+      completeInterviewIfScheduled: (String riskLevel) =>
+          _interviewManager.completeInterviewIfScheduled(riskLevel, _userName),
+      colors: _colors,
+    );
+
     _getUserProfile();
-    fetchInitialMessage();
-    _initializeFCM();
+    _interviewManager.checkScheduledInterviews();
+    _messageHandler.fetchInitialMessage();
+    _initializeNotifications();
+    _interviewManager.checkPendingInterviewDetails(context);
   }
 
   @override
@@ -64,114 +106,56 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _isAppInForeground = state == AppLifecycleState.resumed;
+
+    if (state == AppLifecycleState.resumed) {
+      _interviewManager.checkScheduledInterviews();
+      _interviewManager.checkPendingInterviewDetails(context);
+    }
   }
 
-  Future<void> _initializeFCM() async {
-    await _fcmService.initializeForUser(widget.userId);
+  Future<void> _initializeNotifications() async {
+    await _notificationService.initialize();
 
-    await FirebaseMessaging.instance.subscribeToTopic('chat_${widget.userId}');
-
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {
-      _handleNotificationTap(response);
+    FirebaseMessaging.onMessage.listen((message) {
+      _notificationService.handleForegroundMessage(
+        message,
+        isAppInForeground: _isAppInForeground,
+        addMessage: (Map<String, String> msg) {
+          setState(() {
+            messages.add(msg);
+          });
+        },
+        scrollToBottom: _scrollToBottom,
+      );
     });
 
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _notificationService.handleBackgroundMessage(
+        message,
+        addMessage: (Map<String, String> msg) {
+          setState(() {
+            messages.add(msg);
+          });
+        },
+        scrollToBottom: _scrollToBottom,
+      );
+    });
 
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null) {
-        _handleInitialMessage(message);
+        _notificationService.handleInitialMessage(
+          message,
+          addMessage: (Map<String, String> msg) {
+            setState(() {
+              messages.add(msg);
+            });
+          },
+          scrollToBottom: _scrollToBottom,
+        );
       }
     });
 
-    String? token = await FirebaseMessaging.instance.getToken();
-    if (token != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .update({'fcmToken': token});
-    }
-  }
-
-  void _handleNotificationTap(NotificationResponse response) {
-    if (response.payload != null) {
-      print("Notification payload: ${response.payload}");
-    }
-  }
-
-  void _handleForegroundMessage(RemoteMessage message) {
-    if (!_isAppInForeground) {
-      return;
-    }
-
-    if (message.data.containsKey('message_type') &&
-        message.data['message_type'] == 'chat' &&
-        message.data.containsKey('message')) {
-      if (!messages.any((m) => m['response'] == message.data['message'])) {
-        setState(() {
-          messages.add({'query': '', 'response': message.data['message']});
-        });
-        _scrollToBottom();
-      }
-    }
-
-    RemoteNotification? notification = message.notification;
-    AndroidNotification? android = message.notification?.android;
-
-    if (notification != null && android != null) {
-      _flutterLocalNotificationsPlugin.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'chat_channel',
-            'Chat Notifications',
-            channelDescription: 'Notifications for new chat messages',
-            icon: '@mipmap/ic_launcher',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-        ),
-        payload: message.data.toString(),
-      );
-    }
-  }
-
-  void _handleBackgroundMessage(RemoteMessage message) {
-    print("Background message opened: ${message.messageId}");
-
-    if (message.data.containsKey('messageId')) {
-      _chatService.fetchSpecificMessage(message.data['messageId']).then((msg) {
-        if (msg != null && mounted) {
-          setState(() {
-            messages.add({'query': '', 'response': msg});
-          });
-          _scrollToBottom();
-        }
-      });
-    }
-  }
-
-  void _handleInitialMessage(RemoteMessage message) {
-    print("App opened from notification: ${message.messageId}");
-
-    if (message.data.containsKey('messageId')) {
-      _chatService.fetchSpecificMessage(message.data['messageId']).then((msg) {
-        if (msg != null && mounted) {
-          setState(() {
-            messages.add({'query': '', 'response': msg});
-          });
-          _scrollToBottom();
-        }
-      });
-    }
+    _interviewManager.startScheduledInterview();
   }
 
   void _scrollToBottom() {
@@ -184,119 +168,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         );
       }
     });
-  }
-
-  Future<void> fetchInitialMessage() async {
-    try {
-      final responseData = await _chatService.fetchInitialMessage();
-      if (mounted) {
-        setState(() {
-          messages.add({'query': '', 'response': responseData["response"]});
-        });
-        _scrollToBottom();
-      }
-    } catch (e) {
-      print("❌ Error fetching initial message: $e");
-    }
-  }
-
-  Future<void> sendMessage(String message) async {
-    if (message.trim().isEmpty || widget.userId.isEmpty) {
-      showSnackBar("User ID หรือข้อความไม่ถูกต้อง");
-      return;
-    }
-
-    setState(() {
-      messages.add({'query': message, 'response': ''});
-      _isLoading = true;
-    });
-
-    _controller.clear();
-    _scrollToBottom();
-
-    try {
-      final responseData = await _chatService.sendMessage(message);
-
-      if (mounted) {
-        String aiResponse =
-            responseData['response'] ?? "AI ไม่สามารถให้คำตอบได้";
-
-        setState(() {
-          messages.add({'query': '', 'response': aiResponse});
-          _isLoading = false;
-        });
-        _scrollToBottom();
-
-        if (responseData.containsKey('next_question') &&
-            responseData['next_question'].isNotEmpty) {
-          Future.delayed(const Duration(seconds: 1), () {
-            if (mounted) {
-              setState(() {
-                messages.add(
-                    {'query': '', 'response': responseData['next_question']});
-              });
-              _scrollToBottom();
-            }
-          });
-        }
-
-        if (responseData.containsKey('risk_level')) {
-          String riskLevel = responseData['risk_level'].toLowerCase();
-          bool isHighRisk = riskLevel == "red" ||
-              riskLevel.contains("สูง") ||
-              riskLevel.contains("เสี่ยงสูง");
-          bool isLowRisk = riskLevel == "green" ||
-              riskLevel.contains("ต่ำ") ||
-              riskLevel.contains("เสี่ยงต่ำ");
-
-          Color riskColor = isHighRisk
-              ? _colors.accentColor
-              : (isLowRisk ? const Color(0xFF4CAF50) : const Color(0xFFFF9800));
-          IconData riskIcon = isHighRisk
-              ? Icons.warning_amber_rounded
-              : (isLowRisk ? Icons.check_circle : Icons.info_outline);
-
-          setState(() {
-            messages.add({
-              'query': '',
-              'response': "📢 ผลการวิเคราะห์สุขภาพของคุณ: $riskLevel",
-              'color': riskColor.value.toString()
-            });
-          });
-          _scrollToBottom();
-
-          if (isHighRisk || isLowRisk) {
-            await _chatService.updateRiskStatus(riskLevel);
-
-            if (isHighRisk) {
-              await _fcmService.sendLocalNotification(
-                title: "การแจ้งเตือนความเสี่ยงสุขภาพ",
-                body:
-                    "ระบบพบความเสี่ยงสุขภาพระดับสูง กรุณาปรึกษาแพทย์หรือบุคลากรทางการแพทย์",
-                importance: Importance.high,
-              );
-            }
-          }
-
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (BuildContext context) {
-              return RiskAlertDialog(
-                riskLevel: riskLevel,
-                riskColor: riskColor,
-                riskIcon: riskIcon,
-                primaryColor: _colors.primaryColor,
-              );
-            },
-          );
-        }
-      }
-    } catch (e) {
-      showSnackBar("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ");
-      setState(() => _isLoading = false);
-      print("❌ Error: $e");
-    }
   }
 
   Future<void> _getUserProfile() async {
@@ -330,19 +201,65 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> resetChat() async {
+  Future<void> resetChat({bool isInterview = false}) async {
     try {
       final responseData = await _chatService.resetChat();
       if (mounted) {
         setState(() {
           messages.clear();
+
           messages.add({'query': '', 'response': responseData["response"]});
+
+          if (isInterview) {
+            messages.add({
+              'query': '',
+              'response':
+                  "🎙️ การสัมภาษณ์ AI เพื่อประเมินความเสี่ยงสุขภาพเริ่มขึ้นแล้ว กรุณาตอบคำถามต่อไปนี้อย่างละเอียดและตรงไปตรงมาเพื่อการประเมินที่แม่นยำ"
+            });
+          }
         });
-        showSnackBar("✅ เริ่มแชทใหม่แล้วค่ะ!");
+
+        if (!isInterview) {
+          showSnackBar("✅ เริ่มแชทใหม่แล้วค่ะ!");
+        }
+
+        _scrollToBottom();
       }
     } catch (e) {
       print("❌ Error: $e");
       showSnackBar("❌ ไม่สามารถเริ่มแชทใหม่ได้");
+    }
+  }
+
+  Future<void> sendMessage(String message) async {
+    if (message.trim().isEmpty || widget.userId.isEmpty) {
+      showSnackBar("User ID หรือข้อความไม่ถูกต้อง");
+      return;
+    }
+
+    setState(() {
+      messages.add({'query': message, 'response': ''});
+      _isLoading = true;
+    });
+
+    _controller.clear();
+    _scrollToBottom();
+
+    try {
+      await _messageHandler.processMessage(message, context,
+          setState: (Function() callback) {
+        if (mounted) setState(callback);
+      }, isLoading: (bool value) {
+        if (mounted) {
+          setState(() {
+            _isLoading = value;
+          });
+        }
+      });
+    } catch (e) {
+      showSnackBar("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      setState(() => _isLoading = false);
+      print("❌ Error: $e");
     }
   }
 
@@ -351,7 +268,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: ChatAppBar(
-        title: 'Health AI',
+        title: _interviewManager.hasScheduledInterview
+            ? 'AI Interview'
+            : 'Health AI',
         primaryColor: _colors.primaryColor,
         textColor: _colors.textColor,
         onResetChat: resetChat,
@@ -362,6 +281,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         primaryColor: _colors.primaryColor,
         accentColor: _colors.accentColor,
         textColor: _colors.textColor,
+        hasScheduledInterview: _interviewManager.hasScheduledInterview,
+        nextInterviewDateTime: _interviewManager.nextInterviewDateTime,
+        onViewInterview: _interviewManager.hasScheduledInterview
+            ? () => _interviewManager.showInterviewDetails(
+                context, _interviewManager.nextInterviewDateTime!)
+            : null,
         onResetChat: resetChat,
         onLogout: () async {
           await FirebaseMessaging.instance
@@ -375,9 +300,59 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             );
           }
         },
+        onViewProfile: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserProfileScreen(
+                primaryColor: _colors.primaryColor,
+                accentColor: _colors.accentColor,
+                textColor: _colors.textColor,
+              ),
+            ),
+          );
+        },
       ),
       body: Column(
         children: [
+          if (_interviewManager.hasScheduledInterview)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: _colors.accentColor.withOpacity(0.1),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: _colors.accentColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _interviewManager.nextInterviewDateTime != null
+                          ? 'สัมภาษณ์ AI: ${_interviewManager.nextInterviewDateTime!.day}/${_interviewManager.nextInterviewDateTime!.month}/${_interviewManager.nextInterviewDateTime!.year} เวลา ${_interviewManager.nextInterviewDateTime!.hour.toString().padLeft(2, '0')}:${_interviewManager.nextInterviewDateTime!.minute.toString().padLeft(2, '0')} น.'
+                          : 'มีการนัดสัมภาษณ์ AI',
+                      style: GoogleFonts.prompt(
+                        fontSize: 12,
+                        color: _colors.accentColor,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => _interviewManager.showInterviewDetails(
+                        context, _interviewManager.nextInterviewDateTime!),
+                    child: Text(
+                      'ดูรายละเอียด',
+                      style: GoogleFonts.prompt(
+                        fontSize: 12,
+                        color: _colors.accentColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: ChatMessageList(
               messages: messages,

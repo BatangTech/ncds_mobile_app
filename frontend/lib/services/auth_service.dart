@@ -1,4 +1,3 @@
-//ใช้งาน
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -13,6 +12,8 @@ class AuthService {
     required String email,
     required String password,
     required String name,
+    required String phone,
+    required String ncds,
   }) async {
     String res = "Some error occurred";
     try {
@@ -27,6 +28,8 @@ class AuthService {
           'name': name,
           'email': email,
           'uid': credential.user!.uid,
+          'phone': phone,
+          'ncds': ncds,
         });
         res = "success";
       } else {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class ProfileEditForm extends StatelessWidget {
+class ProfileEditForm extends StatefulWidget {
   final TextEditingController nameController;
   final TextEditingController emailController;
   final TextEditingController phoneController;
@@ -26,17 +26,44 @@ class ProfileEditForm extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<ProfileEditForm> createState() => _ProfileEditFormState();
+}
+
+class _ProfileEditFormState extends State<ProfileEditForm> {
+  late List<String> _currentSelectedNcds;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentSelectedNcds = List<String>.from(widget.selectedNcds);
+    debugPrint("Initial selected NCDs: $_currentSelectedNcds");
+  }
+
+  @override
+  void didUpdateWidget(ProfileEditForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedNcds != widget.selectedNcds) {
+      setState(() {
+        _currentSelectedNcds = List<String>.from(widget.selectedNcds);
+      });
+      debugPrint("Updated selected NCDs: $_currentSelectedNcds");
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    debugPrint(
+        "Building ProfileEditForm with selected NCDs: $_currentSelectedNcds");
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildModernSectionTitle('ข้อมูลส่วนตัว', primaryColor),
+          _buildModernSectionTitle('ข้อมูลส่วนตัว', widget.primaryColor),
           _buildEditInfoField(
             icon: Icons.email_rounded,
             title: 'อีเมล',
-            controller: emailController,
+            controller: widget.emailController,
             readOnly: true,
             helperText: 'ไม่สามารถแก้ไขอีเมลได้',
           ),
@@ -44,21 +71,29 @@ class ProfileEditForm extends StatelessWidget {
           _buildEditInfoField(
             icon: Icons.phone_rounded,
             title: 'เบอร์โทรศัพท์',
-            controller: phoneController,
+            controller: widget.phoneController,
             keyboardType: TextInputType.phone,
           ),
           const SizedBox(height: 16),
           NcdsEditSection(
-            selectedNcds: selectedNcds,
-            availableNcds: availableNcds,
-            primaryColor: primaryColor,
-            accentColor: accentColor,
-            textColor: textColor,
-            updateSelectedNcds: updateSelectedNcds,
+            selectedNcds: _currentSelectedNcds,
+            availableNcds: widget.availableNcds,
+            primaryColor: widget.primaryColor,
+            accentColor: widget.accentColor,
+            textColor: widget.textColor,
+            updateSelectedNcds: _handleNcdsUpdate,
           ),
         ],
       ),
     );
+  }
+
+  void _handleNcdsUpdate(List<String> updatedNcds) {
+    setState(() {
+      _currentSelectedNcds = updatedNcds;
+    });
+    widget.updateSelectedNcds(updatedNcds);
+    debugPrint("NCDs updated: $_currentSelectedNcds");
   }
 
   Widget _buildModernSectionTitle(String title, Color primaryColor) {
@@ -77,7 +112,10 @@ class ProfileEditForm extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             title,
-            style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.w600, color: textColor.withOpacity(0.9)),
+            style: GoogleFonts.prompt(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: widget.textColor.withOpacity(0.9)),
           ),
         ],
       ),
@@ -120,18 +158,21 @@ class ProfileEditForm extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        primaryColor.withOpacity(0.1),
-                        primaryColor.withOpacity(0.2),
+                        widget.primaryColor.withOpacity(0.1),
+                        widget.primaryColor.withOpacity(0.2),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: primaryColor, size: 22),
+                  child: Icon(icon, color: widget.primaryColor, size: 22),
                 ),
                 const SizedBox(width: 16),
                 Text(
                   title,
-                  style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.w500, color: textColor),
+                  style: GoogleFonts.prompt(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: widget.textColor),
                 ),
               ],
             ),
@@ -140,15 +181,18 @@ class ProfileEditForm extends StatelessWidget {
               controller: controller,
               readOnly: readOnly,
               keyboardType: keyboardType,
-              style: GoogleFonts.prompt(fontSize: 15, color: textColor),
+              style: GoogleFonts.prompt(fontSize: 15, color: widget.textColor),
               decoration: InputDecoration(
                 filled: true,
                 fillColor: readOnly ? const Color(0xFFF5F5F7) : Colors.white,
                 hintText: readOnly ? '' : 'กรอก$title',
-                hintStyle: GoogleFonts.prompt(fontSize: 15, color: Colors.grey[400]),
+                hintStyle:
+                    GoogleFonts.prompt(fontSize: 15, color: Colors.grey[400]),
                 helperText: helperText,
-                helperStyle: GoogleFonts.prompt(fontSize: 12, color: Colors.grey[500]),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                helperStyle:
+                    GoogleFonts.prompt(fontSize: 12, color: Colors.grey[500]),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
@@ -159,7 +203,8 @@ class ProfileEditForm extends StatelessWidget {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: primaryColor, width: 1.5),
+                  borderSide:
+                      BorderSide(color: widget.primaryColor, width: 1.5),
                 ),
               ),
             ),
@@ -188,8 +233,28 @@ class NcdsEditSection extends StatelessWidget {
     required this.updateSelectedNcds,
   }) : super(key: key);
 
+  bool _isNcdSelected(String ncd) {
+    for (String selectedNcd in selectedNcds) {
+      if (selectedNcd == ncd) {
+        return true;
+      }
+      if (ncd.startsWith("โรค") && selectedNcd == ncd.substring(3)) {
+        return true;
+      }
+      if (selectedNcd.startsWith("โรค") && ncd == selectedNcd.substring(3)) {
+        return true;
+      }
+      if (selectedNcd.contains(ncd) || ncd.contains(selectedNcd)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
+    debugPrint("NcdsEditSection - Available NCDs: $availableNcds");
+    debugPrint("NcdsEditSection - Selected NCDs: $selectedNcds");
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -224,7 +289,8 @@ class NcdsEditSection extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(Icons.medical_services_rounded, color: accentColor, size: 22),
+                  child: Icon(Icons.medical_services_rounded,
+                      color: accentColor, size: 22),
                 ),
                 const SizedBox(width: 16),
                 Column(
@@ -232,11 +298,15 @@ class NcdsEditSection extends StatelessWidget {
                   children: [
                     Text(
                       'โรคประจำตัว (NCDs)',
-                      style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.w500, color: textColor),
+                      style: GoogleFonts.prompt(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: textColor),
                     ),
                     Text(
                       'Non-Communicable Diseases',
-                      style: GoogleFonts.prompt(fontSize: 12, color: Colors.grey[600]),
+                      style: GoogleFonts.prompt(
+                          fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -247,19 +317,32 @@ class NcdsEditSection extends StatelessWidget {
               spacing: 8,
               runSpacing: 10,
               children: availableNcds.map((ncd) {
-                final isSelected = selectedNcds.contains(ncd);
+                final isSelected = _isNcdSelected(ncd);
+                debugPrint("NCD: $ncd, Is Selected: $isSelected");
+
                 return InkWell(
                   onTap: () {
-                    updateSelectedNcds(
-                      isSelected
-                          ? selectedNcds.where((item) => item != ncd).toList()
-                          : [...selectedNcds, ncd],
-                    );
+                    List<String> updatedNcds;
+                    if (isSelected) {
+                      updatedNcds = selectedNcds.where((item) {
+                        if (item == ncd) return false;
+                        if (item == "โรค$ncd") return false;
+                        if (ncd == "โรค$item") return false;
+                        return true;
+                      }).toList();
+                    } else {
+                      updatedNcds = [...selectedNcds, ncd];
+                    }
+
+                    debugPrint("Updating NCDs to: $updatedNcds");
+                    updateSelectedNcds(updatedNcds);
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? primaryColor : const Color(0xFFF5F5F7),
+                      color:
+                          isSelected ? primaryColor : const Color(0xFFF5F5F7),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: isSelected
                           ? [
@@ -275,8 +358,11 @@ class NcdsEditSection extends StatelessWidget {
                       ncd,
                       style: GoogleFonts.prompt(
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                        color: isSelected ? Colors.white : textColor.withOpacity(0.8),
+                        fontWeight:
+                            isSelected ? FontWeight.w500 : FontWeight.w400,
+                        color: isSelected
+                            ? Colors.white
+                            : textColor.withOpacity(0.8),
                       ),
                     ),
                   ),

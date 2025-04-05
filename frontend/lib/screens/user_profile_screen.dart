@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import '../widgets/ีuserProfile/profile_widgets.dart';
-
 
 class UserProfileScreen extends StatefulWidget {
   final Color primaryColor;
@@ -35,13 +33,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   List<String> selectedNcds = [];
   final List<String> availableNcds = [
-    'เบาหวาน',
-    'ความดันโลหิตสูง',
-    'โรคหัวใจ',
-    'โรคไต',
-    'มะเร็ง',
-    'โรคปอดเรื้อรัง',
-    'โรคหลอดเลือดสมอง'
+    'โรคเบาหวาน',
+    'โรคความดันโลหิตสูง',
+    'โรคหัวใจและหลอดเลือด',
+    'โรคทางเดินหายใจเรื้อรัง',
+    'โรคมะเร็ง',
+    'โรคอ้วน',
   ];
 
   @override
@@ -66,7 +63,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     try {
       final currentUser = _auth.currentUser;
       if (currentUser != null) {
-        final userDoc = await _firestore.collection("users").doc(currentUser.uid).get();
+        final userDoc =
+            await _firestore.collection("users").doc(currentUser.uid).get();
         if (userDoc.exists) {
           setState(() {
             userData = userDoc.data();
@@ -76,7 +74,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
             if (userData?['ncds'] is List) {
               selectedNcds = List<String>.from(userData?['ncds'] ?? []);
-            } else if (userData?['ncds'] is String && userData?['ncds'].isNotEmpty) {
+            } else if (userData?['ncds'] is String &&
+                userData?['ncds'].isNotEmpty) {
               selectedNcds = [userData?['ncds']];
             }
             isLoading = false;
@@ -118,7 +117,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             backgroundColor: widget.primaryColor,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
@@ -129,11 +129,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', style: GoogleFonts.prompt()),
+          content: Text('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+              style: GoogleFonts.prompt()),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }
@@ -149,15 +151,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         centerTitle: true,
         title: Text(
           'โปรไฟล์',
-          style: GoogleFonts.prompt(fontSize: 18, fontWeight: FontWeight.w600, color: widget.textColor),
+          style: GoogleFonts.prompt(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: widget.textColor),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: widget.textColor, size: 22),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: widget.textColor, size: 22),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: Icon(isEditing ? Icons.close_rounded : Icons.edit_rounded, size: 24),
+            icon: Icon(isEditing ? Icons.close_rounded : Icons.edit_rounded,
+                size: 24),
             color: isEditing ? Colors.grey[700] : widget.primaryColor,
             onPressed: () {
               setState(() {
@@ -167,7 +174,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   _phoneController.text = userData?['phone'] ?? '';
                   if (userData?['ncds'] is List) {
                     selectedNcds = List<String>.from(userData?['ncds'] ?? []);
-                  } else if (userData?['ncds'] is String && userData?['ncds'].isNotEmpty) {
+                  } else if (userData?['ncds'] is String &&
+                      userData?['ncds'].isNotEmpty) {
                     selectedNcds = [userData?['ncds']];
                   } else {
                     selectedNcds = [];
@@ -184,7 +192,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: widget.primaryColor))
           : userData == null
-              ? ProfileEmptyState(primaryColor: widget.primaryColor, textColor: widget.textColor)
+              ? ProfileEmptyState(
+                  primaryColor: widget.primaryColor,
+                  textColor: widget.textColor)
               : ProfileContent(
                   userData: userData!,
                   isEditing: isEditing,
@@ -220,12 +230,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: widget.primaryColor,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
                 child: Text(
                   'บันทึกข้อมูล',
-                  style: GoogleFonts.prompt(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+                  style: GoogleFonts.prompt(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white),
                 ),
               ),
             )

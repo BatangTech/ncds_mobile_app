@@ -9,6 +9,7 @@ class ChatDrawer extends StatelessWidget {
   final Color textColor;
   final VoidCallback onResetChat;
   final VoidCallback onLogout;
+  final VoidCallback onViewProfile;
 
   const ChatDrawer({
     Key? key,
@@ -19,6 +20,10 @@ class ChatDrawer extends StatelessWidget {
     required this.textColor,
     required this.onResetChat,
     required this.onLogout,
+    required this.onViewProfile,
+    required bool hasScheduledInterview,
+    DateTime? nextInterviewDateTime,
+    void Function()? onViewInterview,
   }) : super(key: key);
 
   @override
@@ -89,7 +94,9 @@ class ChatDrawer extends StatelessWidget {
                             ),
                             child: Center(
                               child: Text(
-                                userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                                userName.isNotEmpty
+                                    ? userName[0].toUpperCase()
+                                    : 'U',
                                 style: TextStyle(
                                   fontSize: 30,
                                   fontWeight: FontWeight.bold,
@@ -122,19 +129,43 @@ class ChatDrawer extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Online',
-                          style: GoogleFonts.prompt(
-                            color: primaryColor,
-                            fontWeight: FontWeight.w500,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Online',
+                              style: GoogleFonts.prompt(
+                                color: primaryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          InkWell(
+                            onTap: onViewProfile,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: accentColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'ดูโปรไฟล์',
+                                style: GoogleFonts.prompt(
+                                  color: accentColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -142,22 +173,23 @@ class ChatDrawer extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                _buildSectionTitle('เมนูหลัก'),
-                _buildGlassmorphicItem(
-                  icon: Icons.chat_bubble_outlined,
+                _buildModernSectionTitle('เมนูหลัก', primaryColor),
+                _buildModernMenuItem(
+                  icon: Icons.chat_bubble_rounded,
                   title: 'แชท',
                   onTap: () {
                     Navigator.pop(context);
                   },
                   primaryColor: primaryColor,
                   textColor: textColor,
+                  description: 'จัดการการสนทนาของคุณ',
                 ),
-                _buildGlassmorphicItem(
+                _buildModernMenuItem(
                   icon: Icons.refresh_rounded,
                   title: 'เริ่มแชทใหม่',
                   onTap: () {
@@ -166,16 +198,18 @@ class ChatDrawer extends StatelessWidget {
                   },
                   primaryColor: primaryColor,
                   textColor: textColor,
+                  description: 'เริ่มการสนทนาใหม่',
                 ),
-                const SizedBox(height: 16),
-                _buildSectionTitle('การตั้งค่า'),
-                _buildGlassmorphicItem(
+                const SizedBox(height: 8),
+                _buildModernSectionTitle('การตั้งค่า', primaryColor),
+                _buildModernMenuItem(
                   icon: Icons.logout_rounded,
                   title: 'ออกจากระบบ',
                   onTap: onLogout,
                   primaryColor: accentColor,
                   textColor: textColor,
                   isDestructive: true,
+                  description: 'ออกจากระบบแอปพลิเคชัน',
                 ),
               ],
             ),
@@ -206,86 +240,140 @@ class ChatDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildModernSectionTitle(String title, Color primaryColor) {
     return Padding(
       padding: const EdgeInsets.only(left: 24, right: 24, bottom: 12, top: 24),
-      child: Text(
-        title,
-        style: GoogleFonts.prompt(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: textColor.withOpacity(0.4),
-          letterSpacing: 1,
-        ),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(
+              color: primaryColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: GoogleFonts.prompt(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: textColor.withOpacity(0.7),
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildGlassmorphicItem({
+  Widget _buildModernMenuItem({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
     required Color primaryColor,
     required Color textColor,
     bool isDestructive = false,
+    String? description,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 8,
               spreadRadius: 0,
-              offset: const Offset(0, 4),
+              offset: const Offset(0, 2),
             ),
           ],
-          border: Border.all(
-            color: Colors.grey.withOpacity(0.1),
-            width: 1,
-          ),
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
+            splashColor: isDestructive
+                ? primaryColor.withOpacity(0.05)
+                : primaryColor.withOpacity(0.05),
+            highlightColor: isDestructive
+                ? primaryColor.withOpacity(0.1)
+                : primaryColor.withOpacity(0.1),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               child: Row(
                 children: [
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: isDestructive
-                          ? primaryColor.withOpacity(0.1)
-                          : primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(14),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDestructive
+                            ? [
+                                primaryColor.withOpacity(0.1),
+                                primaryColor.withOpacity(0.2)
+                              ]
+                            : [
+                                primaryColor.withOpacity(0.1),
+                                primaryColor.withOpacity(0.2)
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       icon,
                       color: isDestructive ? primaryColor : primaryColor,
-                      size: 20,
+                      size: 22,
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Text(
-                    title,
-                    style: GoogleFonts.prompt(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: isDestructive ? primaryColor : textColor,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.prompt(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: isDestructive ? primaryColor : textColor,
+                          ),
+                        ),
+                        if (description != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            description,
+                            style: GoogleFonts.prompt(
+                              fontSize: 12,
+                              color: textColor.withOpacity(0.5),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: (isDestructive ? primaryColor : textColor).withOpacity(0.3),
-                    size: 16,
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: (isDestructive ? primaryColor : primaryColor)
+                          .withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: (isDestructive ? primaryColor : primaryColor)
+                            .withOpacity(0.5),
+                        size: 14,
+                      ),
+                    ),
                   ),
                 ],
               ),
