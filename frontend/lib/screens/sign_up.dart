@@ -21,6 +21,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController ncdsController = TextEditingController();
   bool isLoading = false;
   
   @override
@@ -28,32 +30,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
     emailController.dispose();
     passwordController.dispose();
     nameController.dispose();
+    phoneController.dispose();
+    ncdsController.dispose();
     super.dispose();
   }
 
-  void signUpUser() async {
+  Future<String> signUpUser(String errorMessage) async {
     setState(() {
       isLoading = true;
     });
     
-    String res = await AuthService().signUpUser(
-      email: emailController.text,
-      password: passwordController.text,
-      name: nameController.text,
-    );
+    try {
+      String res = await AuthService().signUpUser(
+        email: emailController.text,
+        password: passwordController.text,
+        name: nameController.text,
+        phone: phoneController.text,
+        ncds: ncdsController.text,
+      );
 
-    if (res == "success") {
-      String userId = FirebaseAuth.instance.currentUser!.uid;
-      await startChat();
-      
-      Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (context) => ChatScreen(userId: userId),
-      ));
-    } else {
+      if (res == "success") {
+        String userId = FirebaseAuth.instance.currentUser!.uid;
+        await startChat();
+        
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (context) => ChatScreen(userId: userId),
+        ));
+        return res;
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+        showSnackBar(context, res);
+        return res;
+      }
+    } catch (e) {
       setState(() {
         isLoading = false;
       });
-      showSnackBar(context, res);
+      String errorMsg = e.toString();
+      showSnackBar(context, errorMsg);
+      return errorMsg;
     }
   }
 
@@ -64,13 +81,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final String userId = user.uid;
     final String apiUrl = "http://10.0.2.2:8080/start_chat?user_id=$userId";
 
-    final response = await http.get(Uri.parse(apiUrl));
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      print("AI: ${data['response']}");
-    } else {
-      print("❌ Error: ${response.body}");
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print("AI: ${data['response']}");
+      } else {
+        print("❌ Error: ${response.body}");
+      }
+    } catch (e) {
+      print("❌ Connection Error: ${e.toString()}");
     }
   }
 
@@ -92,8 +113,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   nameController: nameController,
                   emailController: emailController,
                   passwordController: passwordController,
+                  phoneController: phoneController,
+                  ncdsController: ncdsController,
                   isLoading: isLoading,
-                  onSignUp: signUpUser,
+                  onSignUp: signUpUser, 
                 ),
                 const SizedBox(height: 16),
                 LoginRedirect(context: context),

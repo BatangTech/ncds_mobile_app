@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
   bool _obscurePassword = true;
-
+  
   @override
   void dispose() {
     super.dispose();
@@ -34,30 +34,63 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void loginUser() async {
-  if (!mounted) return; 
+  // ตรวจสอบว่ามีข้อมูลที่จำเป็นหรือไม่
+  if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+    showErrorSnackBar(context, "กรุณากรอกอีเมลและรหัสผ่าน");
+    return;
+  }
   
   setState(() {
     isLoading = true;
   });
 
-  String res = await AuthService().loginUser(
-    email: emailController.text,
-    password: passwordController.text,
-  );
+  try {
+    String res = await AuthService().loginUser(
+      email: emailController.text,
+      password: passwordController.text,
+    );
 
-  if (!mounted) return; 
-
-  if (res == "success") {
-    String userId = FirebaseAuth.instance.currentUser!.uid;
-
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (context) => ChatScreen(userId: userId),
-    ));
-  } else {
+    // ตรวจสอบว่า Widget ยังอยู่ใน tree หรือไม่
+    if (!mounted) return; 
+    
     setState(() {
       isLoading = false;
     });
-    showSnackBar(context, res);
+
+    if (res == "success") {
+      // แสดงข้อความสำเร็จ
+      showSuccessSnackBar(context, "Login successful!");
+      
+      // รอให้ SnackBar แสดงผลนานพอ
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // ตรวจสอบสถานะอีกครั้งก่อนนำทาง
+      if (!mounted) return;
+      
+      // ดึง userId สำหรับส่งไปหน้า ChatScreen
+      String userId = FirebaseAuth.instance.currentUser!.uid;
+      
+      // ใช้ pushAndRemoveUntil เพื่อป้องกันปัญหา back navigation
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(userId: userId),
+        ),
+        (route) => false,
+      );
+    } else {
+      // แสดงข้อความผิดพลาด
+      showErrorSnackBar(context, "Unable to log in: $res");
+    }
+  } catch (e) {
+    // จัดการกับข้อผิดพลาดที่อาจเกิดขึ้น
+    if (!mounted) return;
+    
+    setState(() {
+      isLoading = false;
+    });
+    
+    // แสดงข้อความแจ้งเตือนเมื่อเกิดข้อผิดพลาด
+    showErrorSnackBar(context, "An error occurred: ${e.toString()}");
   }
 }
 
