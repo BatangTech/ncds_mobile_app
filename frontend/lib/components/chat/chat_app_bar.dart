@@ -5,7 +5,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final Color primaryColor;
   final Color textColor;
-  final VoidCallback onResetChat;
+  final Function({bool clearHistory}) onResetChat;
 
   const ChatAppBar({
     Key? key,
@@ -45,7 +45,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         IconButton(
           icon: Icon(Icons.refresh_rounded, color: primaryColor),
-          onPressed: onResetChat,
+          onPressed: () => onResetChat(clearHistory: true),
           tooltip: 'เริ่มแชทใหม่',
         ),
         const SizedBox(width: 8),
