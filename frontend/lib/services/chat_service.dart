@@ -38,14 +38,19 @@ class ChatService {
     }
   }
 
-  Future<Map<String, dynamic>> resetChat() async {
-    final url = Uri.parse('$baseUrl/new_chat?user_id=$userId');
+  Future<Map<String, dynamic>> resetChat({required String sessionId}) async {
+    try {
+      final url = Uri.parse('$baseUrl/new_chat?user_id=$userId');
+      final response = await http.get(url);
 
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      return jsonDecode(utf8.decode(response.bodyBytes));
-    } else {
-      throw Exception("Failed to reset chat");
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      } else {
+        throw Exception("Failed to reset chat");
+      }
+    } catch (e) {
+      print("❌ Error in resetChat: $e");
+      throw Exception("Failed to reset chat: $e");
     }
   }
 
