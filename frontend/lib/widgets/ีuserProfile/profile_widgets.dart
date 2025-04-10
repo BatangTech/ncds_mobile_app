@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import 'profile_edit_form.dart';
 import 'profile_header.dart';
 import 'profile_info_section.dart';
