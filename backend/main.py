@@ -11,7 +11,8 @@ from ai.converse import new_chat
 import firebase_admin
 from firebase_admin import credentials, firestore
 from ai.converse import get_specific_message
-
+from ai.converse import send_fcm_notification
+from ai.converse import get_user_name
 
 if not firebase_admin._apps:
     cred = credentials.Certificate("firebase-adminsdk.json")  
@@ -79,17 +80,6 @@ def chat(request: ChatRequest):
             content={"error": "Internal server error"},
             status_code=500
         )
-
-def get_user_name(user_id: str):
-    """🔹 ดึงชื่อผู้ใช้จาก Firestore"""
-    try:
-        user_doc = firestore.client().collection("users").document(user_id).get()
-        if user_doc.exists:
-            return user_doc.to_dict().get("name", "คุณ")  # ถ้าไม่มีชื่อให้ใช้ "คุณ"
-    except Exception as e:
-        logger.error(f"❌ Error fetching user name: {e}")
-    return "คุณ"
-
 
 @app.get("/start_chat")
 async def start_chat_route(request: Request):
