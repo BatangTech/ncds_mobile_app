@@ -43,6 +43,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   late final InterviewManager _interviewManager;
   late final NotificationService _notificationService;
   late final MessageHandler _messageHandler;
+  late String _currentSessionId;
 
   @override
   void initState() {
@@ -201,9 +202,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> resetChat({bool isInterview = false}) async {
+  Future<void> resetChat(
+      {bool isInterview = false, bool clearHistory = true}) async {
     try {
-      final responseData = await _chatService.resetChat();
+      _currentSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      final responseData =
+          await _chatService.resetChat(sessionId: _currentSessionId);
+
       if (mounted) {
         setState(() {
           messages.clear();
@@ -214,16 +220,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             messages.add({
               'query': '',
               'response':
-                  "🎙️ การสัมภาษณ์ AI เพื่อประเมินความเสี่ยงสุขภาพเริ่มขึ้นแล้ว กรุณาตอบคำถามต่อไปนี้อย่างละเอียดและตรงไปตรงมาเพื่อการประเมินที่แม่นยำ"
+                  "🎙️ เริ่มการสัมภาษณ์ AI เพื่อประเมินความเสี่ยงสุขภาพ กรุณาตอบอย่างตรงไปตรงมา"
             });
           }
         });
 
-        if (!isInterview) {
-          showSnackBar("✅ เริ่มแชทใหม่แล้วค่ะ!");
-        }
-
         _scrollToBottom();
+
+        if (!isInterview) {
+          showSnackBar("✅ เริ่มแชทใหม่แล้วค่ะ");
+        }
       }
     } catch (e) {
       print("❌ Error: $e");
@@ -273,7 +279,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             : 'Health AI',
         primaryColor: _colors.primaryColor,
         textColor: _colors.textColor,
-        onResetChat: resetChat,
+        onResetChat: ({bool clearHistory = false}) =>
+            resetChat(clearHistory: clearHistory),
       ),
       drawer: ChatDrawer(
         userName: _userName,
@@ -282,6 +289,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         accentColor: _colors.accentColor,
         textColor: _colors.textColor,
         hasScheduledInterview: _interviewManager.hasScheduledInterview,
+        userId: widget.userId,
         nextInterviewDateTime: _interviewManager.nextInterviewDateTime,
         onViewInterview: _interviewManager.hasScheduledInterview
             ? () => _interviewManager.showInterviewDetails(
