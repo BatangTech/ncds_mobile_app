@@ -119,14 +119,11 @@ def prepare_conversation_response(user_id, query):
     if not query.strip():
         return {"response": "ฉันไม่ได้ยินคุณเลยค่ะ ช่วยพูดอีกครั้งได้ไหมคะ?"}
 
-    # Retrieve context and conversation history
     context = get_relevant_context_from_db(query)
     conversation_history = get_conversation_history(user_id)
     
-    # Generate prompt for AI
     prompt = generate_rag_prompt(query, context, conversation_history)
     
-    # Get AI response
     try:
         response = genai_model.generate_content(prompt)
         ai_response = response.text.strip() if response and response.text.strip() else "ขอโทษค่ะ ฉันไม่สามารถประมวลผลคำขอของคุณได้ในขณะนี้"
@@ -137,18 +134,14 @@ def prepare_conversation_response(user_id, query):
     return ai_response, conversation_history
 
 def handle_followup_and_risk(user_id, conversation_history, ai_response):
-    # Generate follow-up question
     followup_question = generate_followup_question(conversation_history)
     
-    # Analyze risk every 5 questions
     conversation_count = get_conversation_count(user_id)
     risk_result = None
     
-    # เพิ่มเงื่อนไขเพื่อให้แน่ใจว่ามีคำถามติดตาม
     if followup_question:
         ai_response += f"\n\nคำถามถัดไป: {followup_question}"
     
-    # ตรวจสอบความเสี่ยงทุก 5 คำถาม
     if conversation_count >= 5 and conversation_count % 5 == 0:
         risk_result = analyze_risk(user_id)
         
@@ -161,16 +154,12 @@ def handle_followup_and_risk(user_id, conversation_history, ai_response):
 
 def converse(user_id, query):
     """Main conversation function with reduced complexity"""
-    # Prepare core conversation response
     ai_response, conversation_history = prepare_conversation_response(user_id, query)
     
-    # Handle follow-up and risk analysis
     ai_response, risk_result = handle_followup_and_risk(user_id, conversation_history, ai_response)
     
-    # Determine risk level for saving
     risk_level = risk_result["risk_level"] if risk_result and "risk_level" in risk_result else None
     
-    # Save conversation to Firestore
     save_conversation_to_firestore(user_id, {"query": query, "response": ai_response}, risk_level=risk_level)
     
     return {
@@ -247,7 +236,6 @@ def analyze_risk(user_id):
             response = genai_model.generate_content(analysis_prompt)
             full_response = response.text.strip() if response and response.text.strip() else "Unable to determine."
             
-            # แยกส่วน risk level และ เหตุผล
             lines = full_response.split('\n', 1)
             original_risk_level = lines[0].strip().lower() 
             reasoning = lines[1].strip() if len(lines) > 1 else ""
@@ -356,20 +344,15 @@ def get_user_name(user_id):
 def new_chat(user_id: str):
     """🔹 เริ่มแชทใหม่โดยการย้ายประวัติการสนทนาเดิมไปยัง sessions"""
     try:
-        # 1. ดึงข้อมูลการสนทนาปัจจุบัน
         chat_ref = db.collection("conversations").document(user_id)
         current_chat = chat_ref.get()
         
-        # 2. ถ้ามีประวัติการสนทนา ให้บันทึกไว้ใน sessions subcollection
+        # บันทึกแชทเก่าไปยัง sessions
         if current_chat.exists:
             current_data = current_chat.to_dict()
             
-            # ตรวจสอบว่ามีประวัติการสนทนาที่ไม่ว่างเปล่า
             if current_data and "conversation" in current_data and current_data["conversation"]:
-                # สร้าง session ID จากเวลาปัจจุบัน
-                session_id = str(int(time.time() * 1000))  # milliseconds timestamp
-                
-                # บันทึกประวัติการสนทนาเก่าใน sessions subcollection
+                session_id = str(int(time.time() * 1000))
                 chat_ref.collection("sessions").document(session_id).set({
                     "conversation": current_data.get("conversation", []),
                     "risk_level": current_data.get("risk_level", "ไม่ระบุ"),
@@ -377,15 +360,25 @@ def new_chat(user_id: str):
                     "session_id": session_id
                 })
         
-        # 3. เริ่มแชทใหม่ด้วยข้อความทักทาย
+        # ล้างข้อมูลการสนทนาปัจจุบัน
+        new_session_id = str(int(time.time() * 1000))
         chat_ref.set({
             "conversation": [],
             "risk_level": "ไม่ระบุ",
             "timestamp": firestore.SERVER_TIMESTAMP,
-            "session_id": str(int(time.time() * 1000))  # กำหนด session_id สำหรับแชทใหม่
+            "session_id": new_session_id
         })
 
-        return {"response": "เริ่มแชทใหม่แล้วค่ะ! กรุณาอธิบายอาการหรือความกังวลของคุณ"}
+        # เรียกใช้ start_chat เพื่อเริ่มต้นการสนทนาใหม่
+        user_name = get_user_name(user_id)
+        start_response = start_chat(user_id, user_name)
+        
+        # ส่งค่ากลับพร้อมสถานะว่าเป็นการเริ่มแชทใหม่
+        return {
+            "response": start_response["response"], 
+            "is_new_chat": True,
+            "session_id": new_session_id
+        }
     
     except Exception as e:
         print(f"❌ Error in new_chat: {e}")

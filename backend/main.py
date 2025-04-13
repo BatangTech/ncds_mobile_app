@@ -133,11 +133,9 @@ async def send_notification(request: Request):
     body = data.get("body")
     additional_data = data.get("data", {})
     
-    # ตรวจสอบข้อมูลที่จำเป็น
     if not all([user_id, title, body]):
         return JSONResponse(content={"error": "Missing required fields"}, status_code=400)
     
-    # ดึง FCM token จาก Firestore
     try:
         user_doc = db.collection("users").document(user_id).get()
         if not user_doc.exists:
@@ -147,7 +145,6 @@ async def send_notification(request: Request):
         if not fcm_token:
             return JSONResponse(content={"error": "FCM token not found for user"}, status_code=404)
         
-        # ส่งการแจ้งเตือนด้วย FCM
         result = send_fcm_notification(fcm_token, title, body, additional_data)
         return JSONResponse(content={"success": result}, status_code=200)
     except Exception as e:
